@@ -1,0 +1,214 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Xml.Linq;
+using Nop.Plugin.Misc.OneS.Models;
+using Nop.Services.Logging;
+
+namespace Nop.Plugin.Misc.OneS.Core.ImportProducts
+{
+    public class ImportOneS : IImportOneS
+    {
+        private readonly Dictionary<string,string> _productSpecifiactionMapping = new Dictionary<string, string>()
+        {
+            {"TypeOils", "Тип масла"},
+            {"Viscous", "Вязкость"},
+            {"Volume", "Объем"},
+        };
+        
+        private readonly IImportOneSImpl _importOneSImpl;
+        private readonly ILogger _logger;
+
+        public ImportOneS(IImportOneSImpl importOneSImpl, ILogger _logger)
+        {
+            _importOneSImpl = importOneSImpl;
+            this._logger = _logger;
+        }
+
+        public bool ImportProductStorages(string path)
+        {
+            if (CheckXmlRootElement(path, "productsavtomasla"))
+            {
+                var importEntities = ParseXml(path);
+                _importOneSImpl.ImportStoragesEntities(importEntities);
+                return true;
+            }
+            if (CheckXmlRootElement(path, "products"))
+            {
+                var importEntities = ParseXml(path);
+                _importOneSImpl.ImportAllEntities(importEntities);
+                return true;
+            }
+            return false;
+            
+        }
+
+        private ImportEntity[] ParseXml(string path)
+        {
+            var root = OpenXml(path);
+
+            var oilRoot = root.Element("Oils");
+            var oils = oilRoot.Elements("Oil");
+            ImportEntity[] importEntities = ParseOil(oils).ToArray();
+
+            return importEntities;
+        }
+
+        private List<ImportEntity> ParseOil(IEnumerable<XElement> oils)
+        {
+            
+                var importEntities = new List<ImportEntity>();
+                foreach (var oil in oils)
+                {
+<<<<<<< local
+=======
+                    BrandSku = (string)oil.Attribute("Brand.Id"),
+                    BrandName = (string)oil.Attribute("Brand"),
+                    ModelSku = (string)oil.Attribute("Id"),
+                    ModelName =(string)oil.Attribute("Title")
+                };
+>>>>>>> other
+
+                    var importEntity = new ImportEntity
+                    {
+                        BrandSku = (string)oil.Attribute("Brand.Id"),
+                        BrandName = (string)oil.Attribute("Brand"),
+                        ModelSku = (string)oil.Attribute("Id"),
+                        ModelName = (string)oil.Attribute("Title")
+                    };
+                    try
+                    {
+
+                        var modelRoot = oil.Element("Models");
+                        if (modelRoot == null)
+                            throw new Exception("No models in oils");
+
+                        var models = modelRoot.Elements("Model");
+
+                        foreach (var model in models)
+                        {
+                            ParseModel(importEntity, model);
+                            importEntities.Add(importEntity.CloneObject());
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.Error(importEntity.ProductSku, e);
+                        throw;
+                    }
+                   
+                }
+
+                return importEntities;
+        }
+       
+        private void ParseModel(ImportEntity importEntity, XElement model)
+        {
+            importEntity.ProductName =importEntity.BrandName+" "+(string) model.Attribute("Title");
+            importEntity.ProductSku = (string) model.Attribute("Id");
+
+            //проверка на удаление
+            var delete = model.Attribute("Delete").Value;
+            if (delete == "true")
+            {
+                importEntity.IsDeleted = true;
+            }
+            //Добавляем опцию спецификации для производителя
+            var brandSpecification= new ProductSpecification()
+            {
+                Name = "Производитель",
+                Value = importEntity.BrandName
+            };
+      
+            var productSpecifications = _productSpecifiactionMapping.Select(i => GetProductSpecification(model, i)).ToList();
+            productSpecifications.Add(brandSpecification);
+            importEntity.ProductSpecifications = productSpecifications.ToArray();
+
+            var storageRoot = model.Element("Storages");
+            if (storageRoot == null)
+                throw new Exception("No storages");
+            var storages = storageRoot.Elements("Storage");
+            importEntity.Storages = storages.Select(GetProductStorage).ToArray();
+        }
+
+        private ProductSpecification GetProductSpecification(XElement model, KeyValuePair<string, string> i)
+        {
+            var specValue = (string) model.Attribute(i.Key);
+           
+            return new ProductSpecification()
+            {
+                Value = specValue,
+                Name = i.Value
+            };
+        }
+
+        private ProductStorage GetProductStorage(XElement storage)
+        {
+            
+            var nicePrice = NicePrice(storage);
+            var name = (string) storage.Attribute("Storage");
+<<<<<<< local
+            Int32 quantity;
+            int.TryParse((string)storage.Attribute("Quantity"), out quantity);
+=======
+            var quantity = Convert.ToInt32((string) storage.Attribute("Quantity"));
+>>>>>>> other
+
+            return new ProductStorage()
+            {
+                Name = name,
+                Price = nicePrice,
+                Quantity = quantity
+            };
+        }
+
+        private decimal NicePrice(XElement storage)
+        {
+            var notNicePrice = (string)storage.Attribute("Price"); 
+            try
+            {
+<<<<<<< local
+                var niceStringPrice = String.Join("", notNicePrice.Where(c => !char.IsWhiteSpace(c)));
+                decimal nicePrice;
+                //nicePrice = nicePrice.Replace(",", ".");
+=======
+>>>>>>> other
+
+<<<<<<< local
+                Decimal.TryParse(niceStringPrice, NumberStyles.Currency, CultureInfo.InvariantCulture, out nicePrice);
+                return nicePrice;
+=======
+                var nicePrice = String.Join("", notNicePrice.Where(c => !char.IsWhiteSpace(c)));
+                nicePrice = nicePrice.Replace(",", ".");
+                return Convert.ToDecimal(nicePrice);
+>>>>>>> other
+
+            }
+            catch (Exception e)
+            {
+                _logger.Error(notNicePrice, e);
+                throw;
+            }
+           
+        }
+
+        private XElement OpenXml(string path)
+        {
+            return XElement.Load(path);
+        }
+
+        private bool CheckXmlRootElement(string path,string rootElement)
+        {
+            var root = OpenXml(path);
+            var oilRoot = root.Element("Oils");
+            if (oilRoot == null)
+                return false;
+            if (root.Name.ToString().ToLower() == rootElement)
+                return true;
+            return false;
+        }
+
+
+    }
+}

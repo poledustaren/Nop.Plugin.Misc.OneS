@@ -1,0 +1,8 @@
+﻿Group: Misc
+FriendlyName: Интеграция с 1с
+SystemName: Misc.OneS
+Version: 1.00
+SupportedVersions: 3.40
+Author: berikolesa team
+DisplayOrder: 1
+FileName: Nop.Plugin.Misc.OneS.dll

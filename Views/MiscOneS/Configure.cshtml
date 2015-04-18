@@ -1,0 +1,27 @@
+﻿
+@{
+    Layout = "";
+}
+
+@model Nop.Plugin.Misc.OneS.Models.MiscOneSSettings
+@using Nop.Web.Framework;
+@Html.Action("StoreScopeConfiguration", "Setting", new { area = "Admin" })
+
+<div>
+    Настройки
+</div>
+
+@using (Html.BeginForm())
+{
+    <div class="OneSSettings">
+        <div class="OneSSettings item">
+            @Html.LabelFor(model => model.PathToExchange)
+            @Html.EditorFor(model => model.PathToExchange)
+        </div>
+        <div class="OneSSettings item">
+            @Html.LabelFor(model => model.PublishOnlyBerikolesaStorage)
+            @Html.CheckBoxFor(model => model.PublishOnlyBerikolesaStorage)
+        </div>
+        <input type="submit" name="save" class="k-button" value="@T("Admin.Common.Save")" />
+    </div>
+}
